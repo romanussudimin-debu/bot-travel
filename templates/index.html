@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Bot Travel</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f6f9;color:#243247;font:14px Arial,sans-serif}
+header{background:#172b4d;color:white;padding:24px max(20px,calc((100% - 1200px)/2))}
+header h1{margin:0 0 6px}
+header p{margin:0;color:#d7dfeb}
+main{max-width:1200px;margin:22px auto;padding:0 16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stat,.panel{background:white;border:1px solid #e1e7ef;border-radius:12px;padding:18px;margin-bottom:16px}
+.stat span{display:block;color:#687587;margin-bottom:8px}
+.stat strong{font-size:23px}
+h2{font-size:18px;margin:0 0 15px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+label{display:block;color:#526074;font-size:12px;margin-bottom:6px}
+input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:7px;background:white}
+button,.btn{display:inline-block;border:0;border-radius:7px;padding:10px 12px;background:#2563eb;color:white;text-decoration:none;font-size:12px;font-weight:bold;cursor:pointer}
+button.secondary,.btn.secondary{background:#e7edf5;color:#25364c}
+button.danger{background:#b42318}
+.actions{display:flex;gap:5px;flex-wrap:wrap}
+.filters{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.field{flex:1;min-width:160px}
+.flash{padding:12px;margin-bottom:12px;border-radius:7px;background:#fff2cf}
+.flash.success{background:#e4f6e9;color:#166534}
+.flash.error{background:#fde8e8;color:#9b1c1c}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #e5eaf0;white-space:nowrap;vertical-align:top}
+th{background:#f8fafc;color:#566579}
+.pill{border-radius:20px;padding:5px 7px;font-weight:bold;font-size:10px}
+.paid{background:#dcfce7;color:#166534}
+.unpaid{background:#fff1c2;color:#815600}
+.pay{display:flex;gap:4px;min-width:170px}
+.pay select{padding:6px}
+.small{padding:7px 8px}
+.empty{text-align:center;color:#687587;padding:24px}
+@media(max-width:700px){.stats,.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>Dashboard Bot Travel</h1>
+<p>Kelola booking, status pembayaran, dan laporan perjalanan.</p>
+</header>
+
+<main>
+{% with messages=get_flashed_messages(with_categories=true) %}
+{% for category,message in messages %}
+<div class="flash {{ category }}">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+
+<div class="stats">
+<div class="stat">
+<span>Total booking</span>
+<strong>{{ stats.jumlah_booking }}</strong>
+</div>
+<div class="stat">
+<span>Total nilai booking</span>
+<strong>Rp {{ "{:,.0f}".format(stats.total_pendapatan or 0).replace(",", ".") }}</strong>
+</div>
+<div class="stat">
+<span>Booking sudah lunas</span>
+<strong>{{ stats.jumlah_lunas }}</strong>
+</div>
+</div>
+
+<section class="panel">
+<h2>Tambah booking</h2>
+<form method="post">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+<div class="grid">
+<div>
+<label>Nama pelanggan</label>
+<input name="nama_pelanggan" maxlength="100" required placeholder="Contoh: Maria">
+</div>
+<div>
+<label>Tanggal keberangkatan</label>
+<input name="tanggal_keberangkatan" type="date" required>
+</div>
+<div>
+<label>Nama paket wisata</label>
+<input name="nama_paket" maxlength="150" required placeholder="Paket Komodo 3D2N">
+</div>
+<div>
+<label>Jumlah peserta</label>
+<input name="jumlah_peserta" type="number" min="1" max="1000" value="1" required>
+</div>
+<div>
+<label>Harga per orang (Rp)</label>
+<input name="harga_per_orang" type="number" min="0" max="1000000000" required placeholder="1500000">
+</div>
+</div>
+<p><button type="submit">Simpan booking</button></p>
+</form>
+</section>
+
+<section class="panel">
+<h2>Cari booking</h2>
+<form class="filters" method="get">
+<div class="field">
+<label>Nama, paket, atau ID</label>
+<input name="q" value="{{ q }}" placeholder="Ketik pencarian">
+</div>
+<div class="field">
+<label>Status pembayaran</label>
+<select name="status">
+<option value="">Semua status</option>
+<option value="BELUM LUNAS" {% if status_filter=='BELUM LUNAS' %}selected{% endif %}>BELUM LUNAS</option>
+<option value="LUNAS" {% if status_filter=='LUNAS' %}selected{% endif %}>LUNAS</option>
+</select>
+</div>
+<button type="submit">Terapkan</button>
+<a class="btn secondary" href="{{ url_for('dashboard') }}">Reset</a>
+</form>
+</section>
+
+<section class="panel">
+<h2>Unduh laporan CSV</h2>
+<form class="filters" method="get" action="{{ url_for('laporan_csv') }}">
+<div class="field">
+<label>Tanggal keberangkatan mulai</label>
+<input name="mulai" type="date">
+</div>
+<div class="field">
+<label>Tanggal keberangkatan sampai</label>
+<input name="sampai" type="date">
+</div>
+<button type="submit">Unduh CSV</button>
+</form>
+<p style="color:#687587;font-size:12px">Kosongkan tanggal untuk mengunduh semua booking.</p>
+</section>
+
+<section class="panel">
+<h2>Daftar booking ({{ bookings|length }} data)</h2>
+<div class="tablewrap">
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Pelanggan</th>
+<th>Keberangkatan</th>
+<th>Paket</th>
+<th>Peserta</th>
+<th>Total</th>
+<th>Status</th>
+<th>Ubah pembayaran</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody>
+{% for b in bookings %}
+<tr>
+<td>#{{ b.id }}</td>
+<td>{{ b.nama_pelanggan }}</td>
+<td>{{ b.tanggal_keberangkatan.strftime('%d-%m-%Y') if b.tanggal_keberangkatan else '-' }}</td>
+<td>{{ b.nama_paket }}</td>
+<td>{{ b.jumlah_peserta }}</td>
+<td><b>Rp {{ "{:,.0f}".format(b.total_biaya or 0).replace(",", ".") }}</b></td>
+<td>
+<span class="pill {{ 'paid' if b.status_pembayaran=='LUNAS' else 'unpaid' }}">{{ b.status_pembayaran }}</span>
+</td>
+<td>
+<form class="pay" method="post" action="{{ url_for('ubah_pembayaran',booking_id=b.id) }}">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+<select name="status_pembayaran">
+<option value="BELUM LUNAS" {% if b.status_pembayaran=='BELUM LUNAS' %}selected{% endif %}>BELUM LUNAS</option>
+<option value="LUNAS" {% if b.status_pembayaran=='LUNAS' %}selected{% endif %}>LUNAS</option>
+</select>
+<button class="small" type="submit">Simpan</button>
+</form>
+</td>
+<td>
+<div class="actions">
+<a class="btn secondary small" href="{{ url_for('detail_booking',booking_id=b.id) }}">Detail</a>
+<a class="btn small" href="{{ url_for('edit_booking',booking_id=b.id) }}">Edit</a>
+<form method="post" action="{{ url_for('hapus_booking',booking_id=b.id) }}" onsubmit="return confirm('Yakin menghapus booking #{{ b.id }} milik {{ b.nama_pelanggan }}? Data yang dihapus tidak dapat dipulihkan.');">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+<button class="danger small" type="submit">Hapus</button>
+</form>
+</div>
+</td>
+</tr>
+{% else %}
+<tr><td colspan="9" class="empty">Tidak ada booking yang cocok.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</section>
+</main>
+</body>
+</html>

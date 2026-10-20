@@ -1,0 +1,18 @@
+# Environment variables and secrets
+.env
+.env.*
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+# Local booking data and backups
+booking.txt
+*.backup
+app._backup.py
